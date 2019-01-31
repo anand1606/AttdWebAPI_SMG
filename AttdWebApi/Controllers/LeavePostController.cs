@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.SqlClient;
 using AttdWebApi.Models;
 using Newtonsoft.Json;
+using System.Net.Http.Headers;
 
 namespace AttdWebApi.Controllers
 {
@@ -17,7 +18,10 @@ namespace AttdWebApi.Controllers
 
         public string Get()
         {
-            return "Welcome To Attendance LeavePost API";
+
+            string response = "Welcome To Attendance LeavePost API";
+
+            return response;
         }
 
 

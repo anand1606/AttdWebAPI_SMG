@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Data.SqlClient;
 using System.Data;
+using System.Configuration;
 
 namespace AttdWebApi.Models
 {
@@ -63,9 +64,16 @@ namespace AttdWebApi.Models
 
     public class Utils
     {
-        public static string cnstr = "Data Source=172.16.12.47; Initial Catalog=Attendance;User ID=sa;Password=testomonials@123";
-        //public static string cnstr = "Data Source=172.16.12.14; Initial Catalog=KOSI_Attendance;User ID=sa;Password=testomonials@123";
-        
+        /// <summary>
+        /// SMGProd : Samaghogha Production db
+        /// SMGDev  : Samaghogha Development db
+        /// NKPProd : KAPAYA Production db
+        /// NKPDev  : KAPAYA Development db
+
+        /// </summary>
+
+        public static string cnstr = ConfigurationManager.ConnectionStrings["conn"].ConnectionString;
+
         public static List<clsLeaveBal> GetLeaveBal(int EmpUnqID, int tYear , string tLeaveType)
         {
             List<clsLeaveBal> t = new List<clsLeaveBal>();
