@@ -38,6 +38,7 @@ namespace AttdWebApi.Models
         public string AttdUser {get;set;}
         public string Remarks {get;set;}
         public string ERROR { get; set; }
+        public string Location { get; set; }
     }
 
 
@@ -65,23 +66,48 @@ namespace AttdWebApi.Models
     public class Utils
     {
         /// <summary>
-        /// SMGProd : Samaghogha Production db
-        /// SMGDev  : Samaghogha Development db
-        /// NKPProd : KAPAYA Production db
-        /// NKPDev  : KAPAYA Development db
-
+        /// IPU     : Samaghogha 
+        /// NKP     : KAPAYA 
+        /// KJSAW   : Kosi - jsaw
+        /// KJQTL   : Kosi - jqtl
         /// </summary>
 
-        public static string cnstr = ConfigurationManager.ConnectionStrings["conn"].ConnectionString;
+        //public static string cnstr = string.Empty;
 
-        public static List<clsLeaveBal> GetLeaveBal(int EmpUnqID, int tYear , string tLeaveType)
+        public static bool ConnectionSet(string Location,out string err)
+        {
+            err = string.Empty;
+            bool result = false;
+
+            
+
+            return result;
+           
+        }
+
+        public static List<clsLeaveBal> GetLeaveBal(int EmpUnqID, int tYear , string tLeaveType, string Location)
         {
             List<clsLeaveBal> t = new List<clsLeaveBal>();
-
             string err = string.Empty;
+
+            string cnstr = string.Empty;            
+            try
+            {
+                cnstr = ConfigurationManager.ConnectionStrings["cn" + Location].ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                return t;
+            }
+
+
+             
+            
             
             using (SqlConnection cn = new SqlConnection())
             {
+
                 cn.ConnectionString = cnstr;
                 try
                 {
@@ -161,7 +187,7 @@ namespace AttdWebApi.Models
             return t;
         }
 
-        public static DataSet GetData(string sql, string ConnectionString, out string err)
+        public static DataSet GetData(string sql, string ConnectionString,  out string err)
         {
             err = string.Empty;
             DataSet Result = new DataSet();
@@ -269,8 +295,21 @@ namespace AttdWebApi.Models
 
         public static string LeaveDataValidate(clsLeavePost t)
         {
-           
+            string Location = t.Location;
+
             string err = string.Empty;
+
+            string cnstr = string.Empty;
+            try
+            {
+                cnstr = ConfigurationManager.ConnectionStrings["cn" + Location].ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                return err;
+            }
+
 
             if (string.IsNullOrEmpty(t.EmpUnqID.ToString()))
             {
@@ -329,7 +368,7 @@ namespace AttdWebApi.Models
            "     ) ";
 
             string err2;
-            DataSet ds = Utils.GetData(sql, Utils.cnstr,out err2);
+            DataSet ds = Utils.GetData(sql, cnstr,out err2);
             bool hasRows = ds.Tables.Cast<DataTable>().Any(table => table.Rows.Count != 0);
             err += err2;
             if (hasRows)
@@ -348,7 +387,7 @@ namespace AttdWebApi.Models
                " and WrkGrp ='comp'" +
                " and LeaveTyp ='" + t.LeaveTyp + "'";
 
-            ds = Utils.GetData(sql, Utils.cnstr,out err2);
+            ds = Utils.GetData(sql, cnstr,out err2);
             err += err2;
             hasRows = ds.Tables.Cast<DataTable>().Any(table => table.Rows.Count != 0);
 
@@ -359,7 +398,7 @@ namespace AttdWebApi.Models
             }
 
 
-            List<clsLeaveBal> tlstbal = Utils.GetLeaveBal(Convert.ToInt32(t.EmpUnqID), t.FromDate.Year, t.LeaveTyp);
+            List<clsLeaveBal> tlstbal = Utils.GetLeaveBal(Convert.ToInt32(t.EmpUnqID), t.FromDate.Year, t.LeaveTyp,Location);
             foreach (clsLeaveBal tbal in tlstbal)
             {
                 if (tbal.IsBalanced && tbal.Balance <= 0)
@@ -381,7 +420,19 @@ namespace AttdWebApi.Models
 
         public static LeaveDaysDetails GetLeaveDaysDetails(clsLeavePost tPost)
         {
+            string Location = tPost.Location;
+
             LeaveDaysDetails t1 = new LeaveDaysDetails();
+            string cnstr = string.Empty;
+            try
+            {
+                cnstr = ConfigurationManager.ConnectionStrings["cn" + Location].ConnectionString;
+            }
+            catch (Exception ex)
+            {                
+                return t1;
+            }
+
 
             DateTime FromDt = tPost.FromDate, ToDt = tPost.ToDate;
             decimal TotDays = 0, WODayNo = 0, HLDay = 0;
@@ -396,7 +447,7 @@ namespace AttdWebApi.Models
             string WOSql = "Select Count(*) From AttdData where CompCode = '01' and WrkGrp = 'Comp' and ScheduleShift ='WO' and  tDate between '" + tPost.FromDate.ToString("yyyy-MM-dd") + "' And '" + ToDt.ToString("yyyy-MM-dd") + "'" +
             " And EmpUnqID='" + tPost.EmpUnqID + "'";
 
-            WODayNo = Convert.ToDecimal(Utils.GetDescription(WOSql, Utils.cnstr,out err));
+            WODayNo = Convert.ToDecimal(Utils.GetDescription(WOSql, cnstr,out err));
 
 
             string hlsql = "Select tDate from HoliDayMast Where " +
@@ -407,7 +458,7 @@ namespace AttdWebApi.Models
             //'check hlDay on WeekOff...
 
             HLDay = 0;
-            DataSet ds = Utils.GetData(hlsql, Utils.cnstr,out err);
+            DataSet ds = Utils.GetData(hlsql, cnstr,out err);
             bool hasRows = ds.Tables.Cast<DataTable>().Any(table => table.Rows.Count != 0);
             if (hasRows)
             {
@@ -415,7 +466,7 @@ namespace AttdWebApi.Models
                 {
                     //Get  from AttdData Table , if ScheduleShift = "WO" on Holiday
                     WOSql = "Select ScheduleShift from AttdData Where EmpUnqId ='" + tPost.EmpUnqID + "' and tDate ='" + Convert.ToDateTime(dr["tDate"]).ToString("yyyy-MM-dd") + "'";
-                    string WODay = Utils.GetDescription(WOSql, Utils.cnstr,out err);
+                    string WODay = Utils.GetDescription(WOSql, cnstr,out err);
                     if (WODay == "WO")
                     {
                         WODayNo -= 1;
@@ -448,16 +499,27 @@ namespace AttdWebApi.Models
             return t1;
         }
 
-        public static bool GetWrkGrpRights(int Formid, string WrkGrp, string EmpUnqID, string GUserID)
+        public static bool GetWrkGrpRights(int Formid, string WrkGrp, string EmpUnqID, string GUserID, string Location)
         {
             bool returnval = false;
+
+            string cnstr = string.Empty;
+            try
+            {
+                cnstr = ConfigurationManager.ConnectionStrings["cn" + Location].ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+
 
             DataSet ds = new DataSet();
             string err2;
             if (EmpUnqID != "")
             {
                 
-                WrkGrp = Utils.GetDescription("Select WrkGrp From MastEmp Where EmpUnqID ='" + EmpUnqID + "'", Utils.cnstr,out err2);
+                WrkGrp = Utils.GetDescription("Select WrkGrp From MastEmp Where EmpUnqID ='" + EmpUnqID + "'", cnstr,out err2);
             }
 
             if (WrkGrp == "" && EmpUnqID == "")
@@ -469,7 +531,7 @@ namespace AttdWebApi.Models
             string wkgsql = "Select * from UserSpRight where UserID = '" + GUserID + "' and FormID = '" + Formid.ToString() + "' and WrkGrp = '" + WrkGrp + "' and Active = 1";
 
 
-            ds = Utils.GetData(wkgsql, Utils.cnstr,out err2);
+            ds = Utils.GetData(wkgsql,cnstr,out err2);
             bool hasRows = ds.Tables.Cast<DataTable>()
                            .Any(table => table.Rows.Count != 0);
 
@@ -485,13 +547,17 @@ namespace AttdWebApi.Models
             return returnval;
         }
 
-        public static DateTime GetSystemDateTime()
+        public static DateTime GetSystemDateTime(string cnstr)
+
         {
+
+            
+            
             DateTime dt = new DateTime();
             string err2;
             DataSet ds = new DataSet();
             string sql = "Select GetDate() as CurrentDate ";
-            ds = Utils.GetData(sql, Utils.cnstr,out err2);
+            ds = Utils.GetData(sql, cnstr,out err2);
             bool hasRows = ds.Tables.Cast<DataTable>()
                            .Any(table => table.Rows.Count != 0);
 
@@ -508,95 +574,95 @@ namespace AttdWebApi.Models
             return dt;
         }
 
-        public static bool ReconsileLeaveBal(string tEmpUnqID, string tLeaveTyp, string PostBy, int tYear,out string err)
-        {
-            bool result = false;
+        //public static bool ReconsileLeaveBal(string tEmpUnqID, string tLeaveTyp, string PostBy, int tYear,out string err)
+        //{
+        //    bool result = false;
 
 
-            string sql = "Select * from LeaveBal Where tYear = '" + tYear.ToString() + "' and EmpUnqID ='" + tEmpUnqID.Trim() + "' and LeaveTyp ='" + tLeaveTyp + "'";
+        //    string sql = "Select * from LeaveBal Where tYear = '" + tYear.ToString() + "' and EmpUnqID ='" + tEmpUnqID.Trim() + "' and LeaveTyp ='" + tLeaveTyp + "'";
 
-            //string sql = "Select * from LeaveBal Where tYear= 2018 and CompCode = '01' and WrkGrp = 'Comp' and EmpUnqID in (Select EmpUnqID From MastEmp Where Active = 1 and WrkGrp = 'Comp' and CompCode = '01')";
-            err = string.Empty;
+        //    //string sql = "Select * from LeaveBal Where tYear= 2018 and CompCode = '01' and WrkGrp = 'Comp' and EmpUnqID in (Select EmpUnqID From MastEmp Where Active = 1 and WrkGrp = 'Comp' and CompCode = '01')";
+        //    err = string.Empty;
 
-            DataSet ds = Utils.GetData(sql, Utils.cnstr, out err);
+        //    DataSet ds = Utils.GetData(sql, Utils.cnstr, out err);
 
-            if (!string.IsNullOrEmpty(err))
-            {
-                return result;
-            }
+        //    if (!string.IsNullOrEmpty(err))
+        //    {
+        //        return result;
+        //    }
 
 
-            bool hasrow = ds.Tables.Cast<DataTable>().Any(table => table.Rows.Count != 0);
+        //    bool hasrow = ds.Tables.Cast<DataTable>().Any(table => table.Rows.Count != 0);
             
-            if (hasrow)
-            {
-                foreach (DataRow dr in ds.Tables[0].Rows)
-                {
+        //    if (hasrow)
+        //    {
+        //        foreach (DataRow dr in ds.Tables[0].Rows)
+        //        {
 
-                    double LeaveHalf = 0;
-                    double LeaveFull = 0;
-                    double LeaveAVL = 0;
+        //            double LeaveHalf = 0;
+        //            double LeaveFull = 0;
+        //            double LeaveAVL = 0;
 
-                    string sql2 = "Select Count(*) from AttdData Where LeaveTyp ='" + dr["LeaveTyp"].ToString() + "' " +
-                        " And tYear = '" + dr["tYear"].ToString() + "' And EmpUnqID ='" + dr["EmpUnqID"].ToString() + "'" +
-                        " And CompCode = '" + dr["CompCode"].ToString() + "' And WrkGrp ='" + dr["WrkGrp"].ToString() + "' and LeaveHalf = 0";
+        //            string sql2 = "Select Count(*) from AttdData Where LeaveTyp ='" + dr["LeaveTyp"].ToString() + "' " +
+        //                " And tYear = '" + dr["tYear"].ToString() + "' And EmpUnqID ='" + dr["EmpUnqID"].ToString() + "'" +
+        //                " And CompCode = '" + dr["CompCode"].ToString() + "' And WrkGrp ='" + dr["WrkGrp"].ToString() + "' and LeaveHalf = 0";
 
-                    LeaveFull = Convert.ToDouble(Utils.GetDescription(sql2, Utils.cnstr, out err));
-                    if (!string.IsNullOrEmpty(err))
-                    {
-                        return result;
-                    }
+        //            LeaveFull = Convert.ToDouble(Utils.GetDescription(sql2, Utils.cnstr, out err));
+        //            if (!string.IsNullOrEmpty(err))
+        //            {
+        //                return result;
+        //            }
 
-                    sql2 = "Select Count(*) from AttdData Where LeaveTyp ='" + dr["LeaveTyp"].ToString() + "' " +
-                       " And tYear = '" + dr["tYear"].ToString() + "' And EmpUnqID ='" + dr["EmpUnqID"].ToString() + "'" +
-                       " And CompCode = '" + dr["CompCode"].ToString() + "' And WrkGrp ='" + dr["WrkGrp"].ToString() + "' and LeaveHalf = 1";
+        //            sql2 = "Select Count(*) from AttdData Where LeaveTyp ='" + dr["LeaveTyp"].ToString() + "' " +
+        //               " And tYear = '" + dr["tYear"].ToString() + "' And EmpUnqID ='" + dr["EmpUnqID"].ToString() + "'" +
+        //               " And CompCode = '" + dr["CompCode"].ToString() + "' And WrkGrp ='" + dr["WrkGrp"].ToString() + "' and LeaveHalf = 1";
 
-                    LeaveHalf = Convert.ToDouble(Utils.GetDescription(sql2, Utils.cnstr, out err));
-                    if (!string.IsNullOrEmpty(err))
-                    {
-                        return result;
-                    }
+        //            LeaveHalf = Convert.ToDouble(Utils.GetDescription(sql2, Utils.cnstr, out err));
+        //            if (!string.IsNullOrEmpty(err))
+        //            {
+        //                return result;
+        //            }
 
-                    if (LeaveHalf > 0)
-                    {
-                        LeaveHalf = LeaveHalf / 2;
-                    }
+        //            if (LeaveHalf > 0)
+        //            {
+        //                LeaveHalf = LeaveHalf / 2;
+        //            }
 
-                    LeaveAVL = LeaveFull + LeaveHalf;
+        //            LeaveAVL = LeaveFull + LeaveHalf;
 
-                    using (SqlConnection cn = new SqlConnection(Utils.cnstr))
-                    {
-                        using (SqlCommand cmd = new SqlCommand())
-                        {
-                            try
-                            {
-                                cn.Open();
-                                sql = "Update LeaveBal Set AVL ='" + LeaveAVL.ToString() + "', UpdDt = GetDate(), UpdID ='" + PostBy + "' Where " +
-                                    " EmpUnqID = '" + dr["EmpUnqID"].ToString() + "' and " +
-                                    " tYear ='" + dr["tYear"].ToString() + "' and " +
-                                    " WrkGrp ='" + dr["WrkGrp"].ToString() + "' And " +
-                                    " LeaveTyp='" + dr["LeaveTyp"].ToString() + "' and " +
-                                    " CompCode ='" + dr["CompCode"].ToString() + "'";
+        //            using (SqlConnection cn = new SqlConnection(Utils.cnstr))
+        //            {
+        //                using (SqlCommand cmd = new SqlCommand())
+        //                {
+        //                    try
+        //                    {
+        //                        cn.Open();
+        //                        sql = "Update LeaveBal Set AVL ='" + LeaveAVL.ToString() + "', UpdDt = GetDate(), UpdID ='" + PostBy + "' Where " +
+        //                            " EmpUnqID = '" + dr["EmpUnqID"].ToString() + "' and " +
+        //                            " tYear ='" + dr["tYear"].ToString() + "' and " +
+        //                            " WrkGrp ='" + dr["WrkGrp"].ToString() + "' And " +
+        //                            " LeaveTyp='" + dr["LeaveTyp"].ToString() + "' and " +
+        //                            " CompCode ='" + dr["CompCode"].ToString() + "'";
 
-                                cmd.Connection = cn;
-                                cmd.CommandType = CommandType.Text;
-                                cmd.CommandText = sql;
-                                cmd.ExecuteNonQuery();
-                                result = true;
+        //                        cmd.Connection = cn;
+        //                        cmd.CommandType = CommandType.Text;
+        //                        cmd.CommandText = sql;
+        //                        cmd.ExecuteNonQuery();
+        //                        result = true;
 
-                            }
-                            catch (Exception ex)
-                            {
-                                err = ex.Message;
-                            }
-                        }
-                    }
+        //                    }
+        //                    catch (Exception ex)
+        //                    {
+        //                        err = ex.Message;
+        //                    }
+        //                }
+        //            }
 
-                }//foreach
-            }//if
+        //        }//foreach
+        //    }//if
 
-            return result;
-        }
+        //    return result;
+        //}
     }
 
 }

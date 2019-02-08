@@ -28,22 +28,22 @@ namespace AttdWebApi.Controllers
 
         [HttpGet]
 
-        public List<clsLeaveBal> Get(int Id,int year)
+        public List<clsLeaveBal> Get(int Id,int year,string location)
         {
-            List<clsLeaveBal> t = AttdWebApi.Models.Utils.GetLeaveBal(Id, year,"");
+            List<clsLeaveBal> t = AttdWebApi.Models.Utils.GetLeaveBal(Id, year,"",location);
             return t;
         }
 
         [HttpGet]
 
-        public List<clsLeaveBal>  Leave(int Id, int year, string leavetype)
+        public List<clsLeaveBal>  Leave(int Id, int year, string leavetype, string location)
         {
-            List<clsLeaveBal> t = AttdWebApi.Models.Utils.GetLeaveBal(Id, year, leavetype);
+            List<clsLeaveBal> t = AttdWebApi.Models.Utils.GetLeaveBal(Id, year, leavetype,location);
             return t;            
         }
 
         [HttpPost]
-        public string SetDBConn(string server, string database, string userid, string password , string adminpass)
+        public string SetDBConn(string server, string database, string userid, string password , string adminpass,string location)
         {
 
             if (adminpass == "9737717776")
@@ -53,7 +53,7 @@ namespace AttdWebApi.Controllers
                
                 System.Configuration.Configuration Config1 = WebConfigurationManager.OpenWebConfiguration("~");
                 ConnectionStringsSection conSetting = (ConnectionStringsSection)Config1.GetSection("connectionStrings");
-                ConnectionStringSettings StringSettings = new ConnectionStringSettings("conn", "Data Source=" + server + ";Database=" + database + ";User ID=" + userid + ";Password=" + password + ";");
+                ConnectionStringSettings StringSettings = new ConnectionStringSettings("cn" + location, "Data Source=" + server + ";Database=" + database + ";User ID=" + userid + ";Password=" + password + ";");
                 conSetting.ConnectionStrings.Remove(StringSettings);
                 conSetting.ConnectionStrings.Add(StringSettings);
                 Config1.Save(ConfigurationSaveMode.Modified);

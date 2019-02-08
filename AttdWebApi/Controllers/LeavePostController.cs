@@ -9,6 +9,7 @@ using System.Data.SqlClient;
 using AttdWebApi.Models;
 using Newtonsoft.Json;
 using System.Net.Http.Headers;
+using System.Configuration;
 
 namespace AttdWebApi.Controllers
 {
@@ -29,7 +30,7 @@ namespace AttdWebApi.Controllers
         public HttpResponseMessage PostLeave([FromBody] object leaveposting)
         {
             clsLeavePost tPost = JsonConvert.DeserializeObject<clsLeavePost>(leaveposting.ToString());
-
+           
             tPost.ERROR = Utils.LeaveDataValidate(tPost);
             if (!string.IsNullOrEmpty(tPost.ERROR))
             {
@@ -40,11 +41,26 @@ namespace AttdWebApi.Controllers
 
             LeaveDaysDetails LeaveDays = Utils.GetLeaveDaysDetails(tPost);
 
+            string Location = tPost.Location;
             string strEmp = tPost.EmpUnqID.ToString();
             string strerr = string.Empty;
+            string cnstr = string.Empty;
+            
+            try
+            {
+                cnstr = ConfigurationManager.ConnectionStrings["cn" + Location].ConnectionString;
+            }
+            catch (Exception ex)
+            {
+                tPost.ERROR = "Could not build Location Connection.." + ex.Message;
+                return Request.CreateResponse(HttpStatusCode.BadRequest, tPost);
+            }
+
+
+
             //bool trecosile = Utils.ReconsileLeaveBal(strEmp, tPost.LeaveTyp, "LeaveAPI", tPost.FromDate.Year, out strerr);
 
-            List<clsLeaveBal> tlstbal = Utils.GetLeaveBal(Convert.ToInt32(tPost.EmpUnqID), tPost.FromDate.Year, tPost.LeaveTyp);
+            List<clsLeaveBal> tlstbal = Utils.GetLeaveBal(Convert.ToInt32(tPost.EmpUnqID), tPost.FromDate.Year, tPost.LeaveTyp,Location);
             if (tlstbal.Count > 0)
             {
                 clsLeaveBal tBal = tlstbal[0];
@@ -84,7 +100,7 @@ namespace AttdWebApi.Controllers
             #endregion
 
             #region MainProc
-            using (SqlConnection cn = new SqlConnection(Utils.cnstr))
+            using (SqlConnection cn = new SqlConnection(cnstr))
             {
                 try
                 {
@@ -108,7 +124,7 @@ namespace AttdWebApi.Controllers
                    " and ToDt ='" + tPost.ToDate.ToString("yyyy-MM-dd") + "'";
 
                 string err2 = string.Empty;
-                DataSet ds = Utils.GetData(sql, Utils.cnstr,out err2);
+                DataSet ds = Utils.GetData(sql, cnstr,out err2);
 
                 if (!string.IsNullOrEmpty(err2))
                 {
@@ -167,7 +183,7 @@ namespace AttdWebApi.Controllers
 
                     string datestr = "Select * from V_LV_USE where CAL_Date between '" + tPost.FromDate.ToString("yyyy-MM-dd") + "' and '" + tPost.ToDate.ToString("yyyy-MM-dd") + "'";
 
-                    DataSet trsLV = Utils.GetData(datestr, Utils.cnstr,out err2);
+                    DataSet trsLV = Utils.GetData(datestr, cnstr,out err2);
 
 
 
@@ -278,7 +294,7 @@ namespace AttdWebApi.Controllers
                         tsql = "Select PublicHLTyp from HolidayMast Where WrkGrp ='COMP' and tDate ='" + CalDt.ToString("yyyy-MM-dd") + "'";
 
 
-                        PublicHLTyp = Utils.GetDescription(tsql, Utils.cnstr, out err2);
+                        PublicHLTyp = Utils.GetDescription(tsql, cnstr, out err2);
                         if(!string.IsNullOrEmpty(err2))
                         {
                             tr.Rollback();
@@ -293,7 +309,7 @@ namespace AttdWebApi.Controllers
                             " And tYear = '" + CalDt.Year.ToString() + "' And tDate ='" + CalDt.ToString("yyyy-MM-dd") + "'";
 
                         err2 = string.Empty;
-                        SchShift = Utils.GetDescription(tsql, Utils.cnstr,out err2);
+                        SchShift = Utils.GetDescription(tsql, cnstr,out err2);
                         if (!string.IsNullOrEmpty(err2))
                         {
                             tr.Rollback();
@@ -316,8 +332,8 @@ namespace AttdWebApi.Controllers
 
                             drSch["schLeave"] = tPost.LeaveTyp;
                             drSch["AddId"] = tPost.AttdUser;
-                            drSch["AddDt"] = Utils.GetSystemDateTime();
-                            drSch["UpdDt"] = Utils.GetSystemDateTime();
+                            drSch["AddDt"] = Utils.GetSystemDateTime(cnstr);
+                            drSch["UpdDt"] = Utils.GetSystemDateTime(cnstr);
                             drSch["UpdId"] = tPost.AttdUser;
                             tmpleavecons += 1;
                         }
@@ -325,22 +341,22 @@ namespace AttdWebApi.Controllers
                         {
                             drSch["schLeave"] = PublicHLTyp;
                             drSch["AddId"] = "HLCal";
-                            drSch["AddDt"] = Utils.GetSystemDateTime();
-                            drSch["UpdDt"] = Utils.GetSystemDateTime();
+                            drSch["AddDt"] = Utils.GetSystemDateTime(cnstr);
+                            drSch["UpdDt"] = Utils.GetSystemDateTime(cnstr);
                             drSch["UpdId"] = tPost.AttdUser;
                         }
                         else if (LeaveDays.WOEntReq && PublicHLTyp == "" && drSch["SchLeave"].ToString() == "WO")
                         {
                             drSch["schLeave"] = "WO";
                             drSch["AddId"] = "ShiftSch";
-                            drSch["UpdDt"] = Utils.GetSystemDateTime();
+                            drSch["UpdDt"] = Utils.GetSystemDateTime(cnstr);
                             drSch["UpdId"] = tPost.AttdUser;
                         }
                         else if (LeaveDays.WOEntReq && PublicHLTyp == "" && SchShift == "WO")
                         {
                             drSch["schLeave"] = "WO";
                             drSch["AddId"] = "ShiftSch";
-                            drSch["UpdDt"] = Utils.GetSystemDateTime();
+                            drSch["UpdDt"] = Utils.GetSystemDateTime(cnstr);
                             drSch["UpdId"] = tPost.AttdUser;
 
                         }
@@ -348,8 +364,8 @@ namespace AttdWebApi.Controllers
                         {
                             drSch["schLeave"] = tPost.LeaveTyp;
                             drSch["AddId"] = tPost.AttdUser;
-                            drSch["AddDt"] = Utils.GetSystemDateTime();
-                            drSch["UpdDt"] = Utils.GetSystemDateTime();
+                            drSch["AddDt"] = Utils.GetSystemDateTime(cnstr);
+                            drSch["UpdDt"] = Utils.GetSystemDateTime(cnstr);
                             drSch["UpdId"] = tPost.AttdUser;
                             tmpleavecons += 1;
                         }
@@ -415,7 +431,7 @@ namespace AttdWebApi.Controllers
 
                             cmd20.CommandType = CommandType.Text;
                             cmd20.CommandText = tsql1;
-                            cmd20.Connection = new SqlConnection(Utils.cnstr);
+                            cmd20.Connection = new SqlConnection(cnstr);
                             cmd20.Connection.Open();
                             cmd20.ExecuteNonQuery();
                             cmd20.Connection.Close();
