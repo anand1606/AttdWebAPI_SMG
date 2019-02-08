@@ -58,7 +58,7 @@ namespace AttdWebApi.Controllers
                 conSetting.ConnectionStrings.Add(StringSettings);
                 Config1.Save(ConfigurationSaveMode.Modified);
 
-                return "dbconnection settled.";
+                return "dbconnection settled for Location :" + location;
             }
             else
             {
